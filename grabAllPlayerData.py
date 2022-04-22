@@ -48,53 +48,59 @@ def grabNBAData():
         bar.update(count)
     return playersDB
 
-def grabCollegeData(playersDB: list):
-    bar = progressbar.ProgressBar(max_value=len(playersDB))
+def grabCollegeData(playersDB: list, allCollegePlayersURL: string, letter: string):
     college_duration = ""
     playersDBWithCollege = []
     count = 0
-    for letter in string.ascii_lowercase:
-        # print(letter)
-        allCollegePlayersURL = "https://www.sports-reference.com/cbb/players/"+letter+"-index.html"
-        allCollegePlayersPageRequest = requests.get(allCollegePlayersURL)
-        college_page_soup = BeautifulSoup(allCollegePlayersPageRequest.content, "html.parser")
 
-        college_div = college_page_soup.find("div", id="content")
-        college_list_header = college_div.find_next("h2").find_next("p")
-        college_total_list = college_list_header.find_next_siblings("div")
-        
-        for i in list(filter(lambda d: d['key'] in letter, playersDB)):
-            # if (i["key"] != letter):
-            #     continue
-            count += 1
-            if (i["college"] != ""):
-                for j in college_total_list:
-                    short_list = j.find_all("p")
-                    for x in short_list:
-                        if ((x.find_next("a").text == i["name"]) and (x.find_next("small").find_next("a").text == i["college"])):
-                            year = x.find_next("small")
-                            # print(x.find_next("a").text) # Player Name
-                            college_duration = year.find(text=True, recursive=False)
-                            # print(year.find(text=True, recursive=False))
-                            # print(x.find_next("small").find_next("a").text) # Player College
-                            break
-            player_entry_college = {
-                'name': i["name"],
-                'active_from': i["active_from"],
-                'active_to': i["active_to"],
-                'position': i["position"],
-                'college': i["college"],
-                'college_duration': college_duration,
-                'url': i["url"]
-            }
-            playersDBWithCollege.append(player_entry_college)
-            college_duration = ""
-            bar.update(count)
+    allCollegePlayersPageRequest = requests.get(allCollegePlayersURL)
+    college_page_soup = BeautifulSoup(allCollegePlayersPageRequest.content, "html.parser")
+
+    college_div = college_page_soup.find("div", id="content")
+    college_list_header = college_div.find_next("h2").find_next("p")
+    college_total_list = college_list_header.find_next_siblings("div")
+    
+    for i in list(filter(lambda d: d['key'] in letter, playersDB)):
+        # if (i["key"] != letter):
+        #     continue
+        count += 1
+        if (i["college"] != ""):
+            for j in college_total_list:
+                short_list = j.find_all("p")
+                for x in short_list:
+                    if ((x.find_next("a").text == i["name"]) and (x.find_next("small").find_next("a").text == i["college"])):
+                        year = x.find_next("small")
+                        # print(x.find_next("a").text) # Player Name
+                        college_duration = year.find(text=True, recursive=False)
+                        # print(year.find(text=True, recursive=False))
+                        # print(x.find_next("small").find_next("a").text) # Player College
+                        break
+        player_entry_college = {
+            'name': i["name"],
+            'active_from': i["active_from"],
+            'active_to': i["active_to"],
+            'position': i["position"],
+            'college': i["college"],
+            'college_duration': college_duration,
+            'url': i["url"]
+        }
+        playersDBWithCollege.append(player_entry_college)
+        college_duration = ""
+    return playersDBWithCollege
+
+def generateCollegeURLs(playersDB: string):
+    playersDBWithCollege = []
+    count = 0
+    bar = progressbar.ProgressBar(max_value=26)
+    for letter in string.ascii_lowercase:
+        count += 1
+        playersDBWithCollege += (grabCollegeData(playersDB, "https://www.sports-reference.com/cbb/players/"+letter+"-index.html", letter))
+        bar.update(count)
     return playersDBWithCollege
 
 def main():
     playersDB = grabNBAData()
-    playersDBWithCollege = grabCollegeData(playersDB)
+    playersDBWithCollege = generateCollegeURLs(playersDB)
     df = pd.DataFrame(playersDBWithCollege)
     df.to_csv("collectedData/playerData.csv", encoding="utf-8", index_label="index")
 
